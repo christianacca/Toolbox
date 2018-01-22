@@ -61,6 +61,36 @@ function Add-Hostnames {
         Set-StrictMode -Version Latest
         $ErrorActionPreference = "Stop"
 
+        function Execute-WithRetry([ScriptBlock] $command) {
+            $attemptCount = 0
+            $operationIncomplete = $true
+            $maxFailures = 5
+            $sleepBetweenFailures = 2
+        
+            while ($operationIncomplete -and $attemptCount -lt $maxFailures) {
+                $attemptCount = ($attemptCount + 1)
+        
+                if ($attemptCount -ge 2) {
+                    Write-Verbose "Waiting for $sleepBetweenFailures seconds before retrying..."
+                    Start-Sleep -s $sleepBetweenFailures
+                    Write-Verbose "Retrying..."
+                }
+        
+                try {
+                    # Call the script block
+                    & $command
+        
+                    $operationIncomplete = $false
+                } catch [System.Exception] {
+                    if ($attemptCount -lt ($maxFailures)) {
+                        Write-Warning ("Attempt $attemptCount of $maxFailures failed: " + $_.Exception.Message)
+                    } else {
+                        throw
+                    }
+                }
+            }
+        }
+
         function CreateHostsEntryObject(
             [string] $ipAddress,
             [string[]] $hostnames,
@@ -210,7 +240,7 @@ function Add-Hostnames {
 
             $hostsContent = $hostsContent.Trim()
 
-            Set-Content -Path $hostsFile -Value $hostsContent -Force -Encoding ASCII
+            Execute-WithRetry { Set-Content -Path $hostsFile -Value $hostsContent -Force -Encoding ASCII }
 
             Write-Verbose "Successfully updated hosts file."
         }
