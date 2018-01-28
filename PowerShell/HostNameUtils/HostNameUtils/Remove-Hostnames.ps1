@@ -66,7 +66,7 @@ function Remove-Hostnames {
         function Execute-WithRetry([ScriptBlock] $command) {
             $attemptCount = 0
             $operationIncomplete = $true
-            $maxFailures = 5
+            $maxFailures = 10
             $sleepBetweenFailures = 2
         
             while ($operationIncomplete -and $attemptCount -lt $maxFailures) {
