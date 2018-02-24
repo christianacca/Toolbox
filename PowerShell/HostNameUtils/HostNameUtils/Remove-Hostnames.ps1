@@ -9,6 +9,12 @@ function Remove-Hostnames {
     .PARAMETER Hostnames
     One or more hostnames to remove from the hosts file.
 
+    .PARAMETER RetryCount
+    How many times to try writing to the hosts file before giving up? Defaults to 30.
+    
+    IMPORTANT: It's advised to retry as many times as possible to avoid
+    transient locks on the hosts file causing a failure.
+
     .EXAMPLE
     Remove-TecBoxHostnames foobar
 
@@ -51,11 +57,15 @@ function Remove-Hostnames {
 
     .NOTES
     This script must be run with administrator privileges.
+
+    CRITICAL: The consequence of a failure is the hosts file will be left empty.
+    TODO: Improvement robustness to prevent a failure resulting in an empty hosts file
     #>
     [CmdletBinding()]
     param(
         [parameter(Mandatory = $true, ValueFromPipeline = $true)]
-        [string[]] $Hostnames
+        [string[]] $Hostnames,
+        [int] $RetryCount = 30
     )
 
     begin
@@ -66,7 +76,7 @@ function Remove-Hostnames {
         function Execute-WithRetry([ScriptBlock] $command) {
             $attemptCount = 0
             $operationIncomplete = $true
-            $maxFailures = 10
+            $maxFailures = $RetryCount
             $sleepBetweenFailures = 2
         
             while ($operationIncomplete -and $attemptCount -lt $maxFailures) {
