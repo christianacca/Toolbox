@@ -14,6 +14,12 @@ function Add-Hostnames {
 
     .PARAMETER Comment
     Optional comment that is written above the new hosts entry.
+    
+    .PARAMETER RetryCount
+    How many times to try writing to the hosts file before giving up? Defaults to 30.
+
+    IMPORTANT: It's advised to retry as many times as possible to avoid
+    transient locks on the hosts file causing a failure.
 
     .EXAMPLE
     Add-TecBoxHostnames 127.0.0.1 foobar
@@ -46,6 +52,9 @@ function Add-Hostnames {
 
     .NOTES
     This script must be run with administrator privileges.
+
+    CRITICAL: The consequence of a failure is the hosts file will be left empty.
+    TODO: Improvement robustness to prevent a failure resulting in an empty hosts file
     #>
     [CmdletBinding()]
     param(
@@ -53,7 +62,8 @@ function Add-Hostnames {
         [string] $IPAddress,
         [parameter(Mandatory = $true, ValueFromPipeline = $true)]
         [string[]] $Hostnames,
-        [string] $Comment
+        [string] $Comment,
+        [int] $RetryCount = 30
     )
 
     begin
@@ -64,7 +74,7 @@ function Add-Hostnames {
         function Execute-WithRetry([ScriptBlock] $command) {
             $attemptCount = 0
             $operationIncomplete = $true
-            $maxFailures = 10
+            $maxFailures = $RetryCount
             $sleepBetweenFailures = 2
         
             while ($operationIncomplete -and $attemptCount -lt $maxFailures) {
